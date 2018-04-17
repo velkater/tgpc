@@ -4,8 +4,6 @@
 <span id="tgpc-module"></span><h1>tgpc module<a class="headerlink" href="#module-tgpc" title="Permalink to this headline"></a></h1>
 <p>Python module for the normalization of ternary generalized pseudostandard words.    
   Examples can be found in the Jupyter notebook <code>Examples.ipynb</code></p>
-  
-</br>
 <h3> API:</h3>
 <dl class="function">
 <dt id="tgpc.Ei">

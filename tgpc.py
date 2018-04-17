@@ -595,7 +595,7 @@ def make_word012(delta, theta, seed = ""):
 
 
     Returns:
-        A string made by pseudopalidnromic closure from (delta, theta).
+        A string made by pseudopalindromic closure from (delta, theta).
 
     Examples:
         >>> make_word012("0011", "012R")

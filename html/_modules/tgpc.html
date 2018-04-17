@@ -1,0 +1,693 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tgpc &#8212; Ternary normalization for GPS words 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tgpc</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Normalizer012"><a class="viewcode-back" href="../tgpc.html#tgpc.Normalizer012">[docs]</a><span class="k">class</span> <span class="nc">Normalizer012</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Object for normalizing a ternary directive bi-sequences </span>
+<span class="sd">    using the new normalization algorithm.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialization of the normalization rules checker.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules_checker</span> <span class="o">=</span> <span class="n">_Normalization012_rules_checker</span><span class="p">()</span>
+        
+<div class="viewcode-block" id="Normalizer012.normalize"><a class="viewcode-back" href="../tgpc.html#tgpc.Normalizer012.normalize">[docs]</a>    <span class="k">def</span> <span class="nf">normalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Ternary normalization algorithm.</span>
+<span class="sd">        </span>
+<span class="sd">        Normalization function that returns the normalized directive</span>
+<span class="sd">        bi-sequence giving the same generalized pseudostandard</span>
+<span class="sd">        word as (delta, theta).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            delta (str): The sequence delta of the directive bi-sequence.</span>
+<span class="sd">                It should be composed of the letters &#39;0&#39;, &#39;1&#39; and &#39;2&#39;.</span>
+<span class="sd">            theta (str): The sequence theta of the directive bi-sequence.</span>
+<span class="sd">                It should be composed from the letters &#39;R&#39;, &#39;0&#39;, &#39;1&#39; and</span>
+<span class="sd">                &#39;2&#39;, where the last three stand for E_0, E_1 and E_2.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Returns the tuple `(new_delta, new_theta, notchanged)` where </span>
+<span class="sd">            (new_delta, new_theta) is the normalized bi-sequence of (delta, theta).</span>
+<span class="sd">            The boolean `notchanged` is True if the bi-sequence (delta, theta)</span>
+<span class="sd">            was already normalized, otherwise it is False.</span>
+<span class="sd">            </span>
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; n = Normalizer012()</span>
+<span class="sd">            &gt;&gt;&gt; n.normalize(&quot;0011&quot;, &quot;00RR&quot;)</span>
+<span class="sd">            (&#39;0011&#39;, &#39;00RR&#39;, True)</span>
+<span class="sd">            </span>
+<span class="sd">            &gt;&gt;&gt; n.normalize(&quot;0102110&quot;, &quot;02R0121&quot;)</span>
+<span class="sd">            (&#39;01021102&#39;, &#39;02R01201&#39;, False)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Checking correct input</span>
+        <span class="n">_check_dt</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+        
+        <span class="c1"># Changing the letters to be in order 0,1,2</span>
+        <span class="n">delta_t</span><span class="p">,</span> <span class="n">theta_t</span><span class="p">,</span> <span class="n">substitution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_letters_order</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+        
+        <span class="c1"># Interleaving delta and theta to get only one sequence from two</span>
+        <span class="n">biseq</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="n">t</span> <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">delta_t</span><span class="p">,</span> <span class="n">theta_t</span><span class="p">))</span>
+
+        <span class="c1"># Initial pre-processing of the prefix</span>
+        <span class="n">biseq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_normalization</span><span class="p">(</span><span class="n">biseq</span><span class="p">)</span>
+
+        <span class="c1"># The main algorithm:</span>
+
+        <span class="c1"># Creating a rule checker that checks if a normalization rule is applicable</span>
+        <span class="c1"># and returns its correction.</span>
+        <span class="n">applicable_rule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules_checker</span><span class="o">.</span><span class="n">find_applicable_rule</span><span class="p">(</span><span class="n">biseq</span><span class="p">)</span>
+        
+        <span class="k">while</span> <span class="n">applicable_rule</span><span class="p">:</span>
+            <span class="n">biseq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_rule</span><span class="p">(</span><span class="n">biseq</span><span class="p">,</span> <span class="n">applicable_rule</span><span class="p">);</span>
+            <span class="n">applicable_rule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules_checker</span><span class="o">.</span><span class="n">find_applicable_rule</span><span class="p">(</span><span class="n">biseq</span><span class="p">)</span>
+
+        <span class="c1"># Post-processing</span>
+        <span class="n">new_delta</span><span class="p">,</span> <span class="n">new_theta</span> <span class="o">=</span> <span class="p">(</span><span class="n">biseq</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">biseq</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;bi-sequence before changing the letters back: (&quot;</span> <span class="o">+</span>                         <span class="n">new_delta</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="n">new_theta</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span><span class="p">)</span>
+
+        <span class="n">new_delta</span><span class="p">,</span> <span class="n">new_theta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_letters_order_back</span><span class="p">(</span><span class="n">new_delta</span><span class="p">,</span> 
+                                                               <span class="n">new_theta</span><span class="p">,</span> <span class="n">substitution</span><span class="p">)</span>
+        
+        <span class="n">notchanged</span> <span class="o">=</span> <span class="p">(</span><span class="n">delta</span> <span class="o">==</span> <span class="n">new_delta</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">theta</span> <span class="o">==</span> <span class="n">new_theta</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">new_delta</span><span class="p">,</span> <span class="n">new_theta</span><span class="p">,</span> <span class="n">notchanged</span><span class="p">)</span></div>
+    
+    <span class="c1"># Preprocessing</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_substitute</span><span class="p">(</span><span class="n">dic</span><span class="p">,</span> <span class="n">seq</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Substitutes letters in a word according to rules in the dictionary</span>
+<span class="sd">        dic. If there is no rule for the letter, keeps the letter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">newseq</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">seq</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">dic</span><span class="p">:</span>
+                <span class="n">newseq</span> <span class="o">=</span> <span class="n">newseq</span> <span class="o">+</span> <span class="n">dic</span><span class="p">[</span><span class="n">l</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">newseq</span> <span class="o">=</span> <span class="n">newseq</span> <span class="o">+</span> <span class="n">l</span>
+        <span class="k">return</span> <span class="n">newseq</span>
+    
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_compose_substitutions</span><span class="p">(</span><span class="n">subs1</span><span class="p">,</span> <span class="n">subs2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Composes two substitutions of letters.&quot;&quot;&quot;</span>
+        <span class="n">csub</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">subs1</span><span class="p">:</span>
+                <span class="n">csub</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="n">subs1</span><span class="p">[</span><span class="n">l</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">csub</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="ow">in</span> <span class="n">subs2</span><span class="p">:</span>
+                    <span class="n">csub</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="n">subs2</span><span class="p">[</span><span class="n">csub</span><span class="p">[</span><span class="n">l</span><span class="p">]]</span>
+            <span class="k">elif</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">subs2</span><span class="p">:</span>
+                <span class="n">csub</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="n">subs2</span><span class="p">[</span><span class="n">l</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">csub</span>
+
+    <span class="k">def</span> <span class="nf">_change_letters_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Changes (delta, theta) so that the word obtained is the same as the </span>
+<span class="sd">        original one, but the first symbol is 0, the second 1 and the third 2.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">subs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">subs2</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;2&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">}</span>
+        <span class="c1"># changing the first letter to be 0</span>
+        <span class="k">if</span> <span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
+            <span class="n">subs</span> <span class="o">=</span> <span class="p">{</span><span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">subs</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">theta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">subs</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
+        
+        <span class="c1">#changing the second letter to 1</span>
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">l</span> <span class="ow">and</span> <span class="n">delta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">subs</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
+                <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">subs2</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+                <span class="n">theta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">subs2</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>            
+                <span class="k">return</span> <span class="p">[</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compose_substitutions</span><span class="p">(</span><span class="n">subs</span><span class="p">,</span> <span class="n">subs2</span><span class="p">)]</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+            
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">l</span> <span class="ow">and</span> <span class="n">delta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">subs2</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">theta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">subs2</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span> 
+            <span class="k">return</span> <span class="p">[</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compose_substitutions</span><span class="p">(</span><span class="n">subs</span><span class="p">,</span> <span class="n">subs2</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">subs</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_change_letters_order_back</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">subs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gives back the original letter order to delta and theta that were </span>
+<span class="sd">        transformed with the substitution subs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">backsubs</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">subs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">backsubs</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_substitute</span><span class="p">(</span><span class="n">backsubs</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">]</span>
+    
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_initial_normalization</span><span class="p">(</span><span class="n">biseq</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initial preprocessing of the directive bi-sequence so that</span>
+<span class="sd">        the prefix (i^l, {R,E_i}^l) is (i^l, E_i^l).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s2">&quot;(0(R|0))+&quot;</span><span class="p">,</span> <span class="n">biseq</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+            <span class="n">biseq</span> <span class="o">=</span> <span class="s2">&quot;00&quot;</span><span class="o">*</span><span class="nb">int</span><span class="p">((</span><span class="n">m</span><span class="o">.</span><span class="n">end</span><span class="p">()</span><span class="o">-</span><span class="n">m</span><span class="o">.</span><span class="n">start</span><span class="p">())</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">biseq</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+        <span class="k">return</span> <span class="n">biseq</span>
+    
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_apply_rule</span><span class="p">(</span><span class="n">biseq</span><span class="p">,</span> <span class="n">correction</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Function that applies the correction in the biseq.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">biseq</span><span class="p">[:</span><span class="n">correction</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="n">correction</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">biseq</span><span class="p">[</span><span class="n">correction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span><span class="p">:]</span>
+    
+<div class="viewcode-block" id="Normalizer012.print_all_factor_rules"><a class="viewcode-back" href="../tgpc.html#tgpc.Normalizer012.print_all_factor_rules">[docs]</a>    <span class="k">def</span> <span class="nf">print_all_factor_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prints in a readable form all the factor normalization rules&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules_checker</span><span class="o">.</span><span class="n">print_all_factor_rules_readable</span></div></div>
+        
+
+<span class="k">class</span> <span class="nc">_Normalization012_rules_checker</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Checks if some normalization rule is applicable and if so,</span>
+<span class="sd">    returns its position and correction.   </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preparing and compiling all the normalization rules.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ei</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="n">Ei</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">),</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span> <span class="n">Ei</span><span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">),</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span> <span class="n">Ei</span><span class="p">(</span><span class="s2">&quot;2&quot;</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_generate_factor_rules</span><span class="p">()</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compile_rules</span><span class="p">()</span>
+    
+    <span class="c1"># Regex representing left sides of the prefix normalization rules,</span>
+    <span class="c1"># their corrections (and the identifier of the rule for information).</span>
+    <span class="n">_bad_prefixes_and_correction</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;(00)*02&quot;</span><span class="p">,</span> <span class="s2">&quot;0012&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0010&quot;</span><span class="p">,</span> <span class="s2">&quot;122100&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;00(120R)+10&quot;</span><span class="p">,</span> <span class="s2">&quot;1220&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0012(0R12)*01&quot;</span><span class="p">,</span> <span class="s2">&quot;0R21&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;001221(1R11)*12&quot;</span><span class="p">,</span> <span class="s2">&quot;1R22&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0012211R(111R)*10&quot;</span><span class="p">,</span> <span class="s2">&quot;1100&quot;</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;001222&quot;</span><span class="p">,</span> <span class="s2">&quot;210012&quot;</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0012(0R12)*00&quot;</span><span class="p">,</span> <span class="s2">&quot;0R20&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;00(120R)*11&quot;</span><span class="p">,</span> <span class="s2">&quot;1221&quot;</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(001221)*00122R&quot;</span><span class="p">,</span> <span class="s2">&quot;211R&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(001221)*001R&quot;</span><span class="p">,</span><span class="s2">&quot;120R&quot;</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(001221)+0R&quot;</span><span class="p">,</span><span class="s2">&quot;002R&quot;</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(001221)+1R2R&quot;</span><span class="p">,</span> <span class="s2">&quot;222R&quot;</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(001221)+002R2R&quot;</span><span class="p">,</span> <span class="s2">&quot;210R&quot;</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(001221)*00120R2R&quot;</span><span class="p">,</span> <span class="s2">&quot;201R&quot;</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;00(120R)*122111&quot;</span><span class="p">,</span> <span class="s2">&quot;1R11&quot;</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0012(0R12)*0R2022&quot;</span><span class="p">,</span> <span class="s2">&quot;2112&quot;</span><span class="p">,</span> <span class="mi">17</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(00)+1212&quot;</span><span class="p">,</span> <span class="s2">&quot;1R02&quot;</span><span class="p">,</span> <span class="mi">18</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0012(0R12)+2020&quot;</span><span class="p">,</span> <span class="s2">&quot;2R10&quot;</span><span class="p">,</span> <span class="mi">19</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(00)+1210&quot;</span><span class="p">,</span> <span class="s2">&quot;1120&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;0012(0R12)*0R2112&quot;</span><span class="p">,</span> <span class="s2">&quot;1022&quot;</span><span class="p">,</span> <span class="mi">21</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;001221(1R11)*0020&quot;</span><span class="p">,</span> <span class="s2">&quot;2R10&quot;</span><span class="p">,</span> <span class="mi">22</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;001221(1R11)*1R2201&quot;</span><span class="p">,</span> <span class="s2">&quot;0021&quot;</span><span class="p">,</span> <span class="mi">23</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(00)+1202&quot;</span><span class="p">,</span> <span class="s2">&quot;0R12&quot;</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(00)+001111&quot;</span><span class="p">,</span> <span class="s2">&quot;1R11&quot;</span><span class="p">,</span> <span class="mi">25</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(00)+001020&quot;</span><span class="p">,</span> <span class="s2">&quot;2R10&quot;</span><span class="p">,</span> <span class="mi">26</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;00(120R)+202111&quot;</span><span class="p">,</span> <span class="s2">&quot;120021&quot;</span><span class="p">,</span> <span class="mi">27</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;(00)+121121&quot;</span><span class="p">,</span> <span class="s2">&quot;200211&quot;</span><span class="p">,</span> <span class="mi">28</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;00(120R)+211020&quot;</span><span class="p">,</span> <span class="s2">&quot;220110&quot;</span><span class="p">,</span> <span class="mi">29</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;001221(1R11)*1R220020&quot;</span><span class="p">,</span> <span class="s2">&quot;211200&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="p">)</span>
+            
+    <span class="k">def</span> <span class="nf">find_applicable_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">biseq</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finds the next applicable normalization rule in the directive bi-sequence.</span>
+<span class="sd">        </span>
+<span class="sd">        Function looking if a prefix rule or a factor rule is applicable inside the</span>
+<span class="sd">        pre-processed directive bi-sequence and returns the next rule to apply.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            biseq (str): Directive bi-sequence (interleaved preprocessed sequences delta</span>
+<span class="sd">                and theta).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Returns None if no normalization rule is applicable. If there is, it finds</span>
+<span class="sd">            the applicable rule on the shortest prefix of the directive bi-sequence </span>
+<span class="sd">            and returns the index and the correction to apply.</span>
+<span class="sd">        &quot;&quot;&quot;</span>    
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Checking for an applicable rule in&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">biseq</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">biseq</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">])))</span>
+        
+        <span class="n">applicable_rule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_next_prefix_rule</span><span class="p">(</span><span class="n">biseq</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">applicable_rule</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">applicable_rule</span>
+        
+        <span class="c1"># If there is no bad prefix, we look for a factor rule</span>
+        <span class="n">applicable_rule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_next_factor_rule</span><span class="p">(</span><span class="n">biseq</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">applicable_rule</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">applicable_rule</span>  
+    
+    <span class="k">def</span> <span class="nf">_find_next_prefix_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">biseq</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finds the next applicable prefix normalization rule&quot;&quot;&quot;</span>
+        <span class="c1"># Looking for a prefix rule</span>
+        <span class="k">for</span> <span class="n">prefix_rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefix_rules</span><span class="p">:</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">prefix_rule</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">biseq</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;prefix rule: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">prefix_rule</span><span class="p">))</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">end</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="n">prefix_rule</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="c1"># place and correction</span>
+    
+    <span class="k">def</span> <span class="nf">_find_next_factor_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">biseq</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finds the next applicable factor rule, i.e., the rule that can be </span>
+<span class="sd">        applied on the shortest prefix of the directive bi-sequence.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">matches</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">rules_index</span><span class="p">,</span><span class="n">_rules</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">_rules</span><span class="p">:</span>
+                <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">biseq</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;rule&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">rules_index</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;: &quot;</span> <span class="o">+</span>                     <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_print_factor_rule</span><span class="p">(</span><span class="n">rule</span><span class="p">))</span> <span class="o">+</span>
+                    <span class="s2">&quot; in biseq &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">biseq</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">biseq</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">])))</span>
+                    
+                    <span class="n">position</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">end</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span> <span class="c1"># The position to be corrected</span>
+                    <span class="c1">#Index of match and correction:</span>
+                    <span class="n">matches</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">position</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules_replacement</span><span class="p">(</span><span class="n">rules_index</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))])</span>
+                    <span class="n">biseq</span> <span class="o">=</span> <span class="n">biseq</span><span class="p">[:</span><span class="n">position</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;all non-prefix matches: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">matches</span><span class="p">))</span>
+        
+        <span class="c1"># Finding final factor rule (leftmost)</span>
+        <span class="k">if</span> <span class="n">matches</span><span class="p">:</span>
+            <span class="n">final</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="k">if</span> <span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">final</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">final</span> <span class="o">=</span> <span class="n">rule</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Final change:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">final</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">final</span> 
+    
+    <span class="k">def</span> <span class="nf">_factor_rules_replacement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">rule</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finds the correction for a given factor rule, depending</span>
+<span class="sd">        on the type of the rule (1, 2, 3 or 4).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ei</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ei</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">rule</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;R&quot;</span><span class="o">+</span> <span class="n">rule</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">rule</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">index</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">rule</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">+</span><span class="n">rule</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">rule</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;R&quot;</span>
+        <span class="k">elif</span> <span class="n">index</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">rule</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">+</span><span class="n">ei</span><span class="p">[</span><span class="n">rule</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">rule</span><span class="p">[</span><span class="mi">3</span><span class="p">])]</span> 
+                    <span class="o">+</span> <span class="n">ei</span><span class="p">[</span><span class="n">rule</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">ei</span><span class="p">[</span><span class="n">rule</span><span class="p">[</span><span class="mi">3</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">rule</span><span class="p">[</span><span class="mi">2</span><span class="p">])])]</span> <span class="o">+</span> <span class="n">rule</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">index</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">rule</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span><span class="o">+</span><span class="n">rule</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">rule</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="n">rule</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">+</span><span class="n">rule</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">+</span> <span class="n">rule</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No correction found.&quot;</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_generate_factor_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creates all possible factor rules (of type 1, 2, 3 and 4)&quot;&quot;&quot;</span>
+        <span class="n">ei</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ei</span>
+        <span class="n">a_b</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="s1">&#39;012&#39;</span><span class="p">,</span> <span class="n">repeat</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">]</span>
+        
+        <span class="c1"># we consider here b as b_2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules1</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span> <span class="s2">&quot;R&quot;</span> <span class="o">+</span> <span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])]</span><span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> 
+                  <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">a_b</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules2</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])]</span><span class="o">+</span> <span class="s2">&quot;R&quot;</span> <span class="o">+</span> 
+                  <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span><span class="s2">&quot;R&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">a_b</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+
+        <span class="n">ij</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">permutations</span><span class="p">(</span><span class="s2">&quot;012&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># we consider here b as b_1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules3</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> 
+                   <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])])]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> 
+                  <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">a_b</span><span class="p">,</span> <span class="n">ij</span><span class="p">))</span>
+
+        <span class="n">ijk</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">permutations</span><span class="p">(</span><span class="s2">&quot;012&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules4</span> <span class="o">=</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> 
+                 <span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])])]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> 
+                    <span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">ei</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]][</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])])]</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+                 <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">a_b</span><span class="p">,</span> <span class="n">ijk</span><span class="p">))</span>
+    <span class="k">def</span> <span class="nf">_compile_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compiles de regexes of all the normalization rules.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prefix_rules</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">((</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span><span class="n">rule</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">rule</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                                   <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bad_prefixes_and_correction</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^([012R]</span><span class="si">{2}</span><span class="s1">)*(&#39;</span><span class="o">+</span> <span class="n">rule</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules1</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^([012R]</span><span class="si">{2}</span><span class="s1">)*(&#39;</span><span class="o">+</span> <span class="n">rule</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules2</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^([012R]</span><span class="si">{2}</span><span class="s1">)*(&#39;</span><span class="o">+</span> <span class="n">rule</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules3</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^([012R]</span><span class="si">{2}</span><span class="s1">)*(&#39;</span><span class="o">+</span> <span class="n">rule</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules4</span> <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">print_all_factor_rules_readable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prints all the factor rules&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_factor_rules</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+            
+    <span class="k">def</span> <span class="nf">_print_factor_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prints factor rules of one type&quot;&quot;&quot;</span>
+        <span class="n">readable_rules</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Factor rules &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factor_rules</span><span class="p">[</span><span class="n">index</span><span class="p">]:</span>
+            <span class="n">readable_rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_print_factor_rule</span><span class="p">(</span><span class="n">rule</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">readable_rules</span><span class="p">))</span>
+                                  
+    <span class="k">def</span> <span class="nf">_print_factor_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rule</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prints a readable factor rule&quot;&quot;&quot;</span>
+        <span class="n">rule_from_regex</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">pattern</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">rule_from_regex</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">rule_from_regex</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">])</span>
+
+<div class="viewcode-block" id="NaiveNormalizer012"><a class="viewcode-back" href="../tgpc.html#tgpc.NaiveNormalizer012">[docs]</a><span class="k">class</span> <span class="nc">NaiveNormalizer012</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Object for normalizing ternary directive bi-sequences using</span>
+<span class="sd">    a naive algorithm.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+        
+<div class="viewcode-block" id="NaiveNormalizer012.normalize"><a class="viewcode-back" href="../tgpc.html#tgpc.NaiveNormalizer012.normalize">[docs]</a>    <span class="k">def</span> <span class="nf">normalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Ternary naive normalization algorithm.</span>
+<span class="sd">        </span>
+<span class="sd">        Naive normalization function that returns the normalized </span>
+<span class="sd">        directive bi-sequence giving the same generalized pseudostandard</span>
+<span class="sd">        word as (delta, theta). It creates the prefixes w_i by generalized</span>
+<span class="sd">        pseudopalindromic closures a then checks if those are the only</span>
+<span class="sd">        pseudopalindromic prefixes in the word created by the directive bi-sequence.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            delta (str): The sequence delta of the directive bi-sequence.</span>
+<span class="sd">                It should be composed of the letters &#39;0&#39;, &#39;1&#39; and &#39;2&#39;.</span>
+<span class="sd">            theta (str): The sequence theta of the directive bi-sequence.</span>
+<span class="sd">                It should be composed from the letters &#39;R&#39;, &#39;0&#39;, &#39;1&#39; and</span>
+<span class="sd">                &#39;2&#39;, where the last three stand for E_0, E_1 and E_2. Theta</span>
+<span class="sd">                should be of the same length as delta.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Returns the tuple `(new_delta, new_theta, notchanged)` where (new_delta, new_theta)</span>
+<span class="sd">            is the normalized bi-sequence of (delta, theta). The boolean `notchanged` is True </span>
+<span class="sd">            if the bi-sequence (delta, theta) was already normalized, otherwise it is False.</span>
+<span class="sd">            </span>
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; nn = NaiveNormalizer012()</span>
+<span class="sd">            &gt;&gt;&gt; nn.normalize(&quot;0011&quot;, &quot;00RR&quot;)</span>
+<span class="sd">            (&#39;0011&#39;, &#39;00RR&#39;, True)</span>
+<span class="sd">            </span>
+<span class="sd">            &gt;&gt;&gt; nn.normalize(&quot;0102110&quot;, &quot;02R0121&quot;)</span>
+<span class="sd">            (&#39;01021102&#39;, &#39;02R01201&#39;, False)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Checking correct input</span>
+        <span class="n">_check_dt</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+                         
+        <span class="n">w</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">l</span><span class="o">=</span><span class="mi">1</span>
+        <span class="n">prefixes</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="c1"># Creating the pseudopalindromic prefixes w_i</span>
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)):</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">w</span> <span class="o">+</span> <span class="n">delta</span><span class="p">[</span><span class="n">step</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;R&quot;</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">make_pal_closure</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">theta</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">]:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">make_eipal_closure</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">theta</span><span class="p">[</span><span class="n">step</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;wrong symbol&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="n">prefixes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Prefixes from (delta, theta): &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">prefixes</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Obtained word: &quot;</span> <span class="o">+</span> <span class="n">w</span><span class="p">)</span>
+        
+        <span class="c1"># Finding all the pseudopalindromic prefixes of the word obtained</span>
+        <span class="n">newdelta</span> <span class="o">=</span> <span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">newtheta</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">while</span> <span class="n">l</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">):</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="n">w</span><span class="p">[:</span><span class="n">l</span><span class="p">]</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_palindromicity</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">l</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">):</span>
+                    <span class="n">newdelta</span> <span class="o">=</span> <span class="n">newdelta</span> <span class="o">+</span> <span class="n">w</span><span class="p">[</span><span class="n">l</span><span class="p">]</span>
+                <span class="n">newtheta</span> <span class="o">=</span> <span class="n">newtheta</span> <span class="o">+</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>           
+            <span class="n">l</span><span class="o">=</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span>
+            
+        <span class="k">if</span> <span class="n">newdelta</span> <span class="o">==</span> <span class="n">delta</span> <span class="ow">and</span> <span class="n">newtheta</span> <span class="o">==</span> <span class="n">theta</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">newdelta</span><span class="p">,</span> <span class="n">newtheta</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">newdelta</span><span class="p">,</span> <span class="n">newtheta</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+        
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_test_palindromicity</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Checks if a seq is an palindrome or an Ei-palindrome and </span>
+<span class="sd">        returns its nature. Note that the word ii..i is considered </span>
+<span class="sd">        here as an E_i palindrome.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">is_eipal</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span><span class="mi">0</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">is_eipal</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">is_eipal</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">is_pal</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Ei"><a class="viewcode-back" href="../tgpc.html#tgpc.Ei">[docs]</a><span class="k">def</span> <span class="nf">Ei</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The involutory antimorphism Ei.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        i : Either 0, 1, 2 or &quot;0&quot;, &quot;1&quot;, &quot;2&quot;</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple corresponding to the involutory antimorphism Ei.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; Ei(0)</span>
+<span class="sd">        (&#39;0&#39;, &#39;2&#39;, &#39;1&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; Ei(1)</span>
+<span class="sd">        (&#39;2&#39;, &#39;1&#39;, &#39;0&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; Ei(2)</span>
+<span class="sd">        (&#39;1&#39;, &#39;0&#39;, &#39;2&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Checking correct input</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is not in A = {{0,1,2}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+        
+    <span class="n">i</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">ei</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ei</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">ei</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">((</span><span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="p">)</span><span class="o">%</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">ei</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span><span class="o">%</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">((</span><span class="mi">1</span><span class="o">+</span><span class="n">i</span><span class="p">)</span><span class="o">%</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ei</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="is_eipal"><a class="viewcode-back" href="../tgpc.html#tgpc.is_eipal">[docs]</a><span class="k">def</span> <span class="nf">is_eipal</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Checks if a word is an Ei-palindrome.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        seq (string): The word checked composed </span>
+<span class="sd">            of the letters &quot;0&quot;, &quot;1&quot; and &quot;2&quot;.</span>
+<span class="sd">        i: Pseudopalindromic type, can be either 0, 1, 2, or </span>
+<span class="sd">            &quot;0&quot;, &quot;1&quot;, &quot;2&quot;, standing for E_0, E_1 and E_2.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if the word is an Ei-palindrome, otherwise False.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; is_eipal(&quot;012&quot;, 1)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; is_eipal(&quot;002&quot;, 1)</span>
+<span class="sd">        False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Checking correct input</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is not in A = {{0,1,2}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+    <span class="n">_check_ternary</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    
+    <span class="n">ei</span> <span class="o">=</span> <span class="n">Ei</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">l</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">seq</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">l</span><span class="o">/</span><span class="mi">2</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">seq</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ei</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">l</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">x</span><span class="p">])]:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="is_pal"><a class="viewcode-back" href="../tgpc.html#tgpc.is_pal">[docs]</a><span class="k">def</span> <span class="nf">is_pal</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Checks if a word is an R-palindrome.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        seq (string): The word checked.     </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if the word is an Ei-palindrome, otherwise False.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; is_pal(&quot;012&quot;)</span>
+<span class="sd">        False</span>
+<span class="sd">        &gt;&gt;&gt; is_pal(&quot;010&quot;)</span>
+<span class="sd">        True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">l</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">l</span> <span class="o">//</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">seq</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">!=</span> <span class="n">seq</span><span class="p">[</span><span class="n">l</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">]:</span>
+            <span class="k">return</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="make_pal_closure"><a class="viewcode-back" href="../tgpc.html#tgpc.make_pal_closure">[docs]</a><span class="k">def</span> <span class="nf">make_pal_closure</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Makes a palindromic closure of a string.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        seq (string): A word.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The palindromic closure of the word.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; make_pal_closure(&quot;101&quot;)</span>
+<span class="sd">        &#39;101&#39;</span>
+<span class="sd">        &gt;&gt;&gt; make_pal_closure(&quot;102&quot;)</span>
+<span class="sd">        &#39;10201&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_pal</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">is_pal</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span> <span class="o">!=</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{0}</span><span class="s2"> longest palindromic suffix: </span><span class="si">{1}</span><span class="s2">&quot;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="p">:]))</span>
+    <span class="n">closure</span> <span class="o">=</span> <span class="n">seq</span> <span class="o">+</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">closure</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="make_eipal_closure"><a class="viewcode-back" href="../tgpc.html#tgpc.make_eipal_closure">[docs]</a><span class="k">def</span> <span class="nf">make_eipal_closure</span> <span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Makes an Ei-palindromic closure of a string.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        seq (string): A word composed </span>
+<span class="sd">            of the letters &quot;0&quot;, &quot;1&quot; and &quot;2&quot;.</span>
+<span class="sd">        i: Pseudopalindromic type, can be either 0, 1, 2, or </span>
+<span class="sd">            &quot;0&quot;, &quot;1&quot;, &quot;2&quot;, standing for E_0, E_1 and E_2.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The palindromic closure of the word.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; make_eipal_closure(&quot;102&quot;, 0)</span>
+<span class="sd">        &#39;102&#39;</span>
+<span class="sd">        &gt;&gt;&gt; make_eipal_closure(&quot;101&quot;, 1)</span>
+<span class="sd">        &#39;10121&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Checking correct input</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is not in A = {{0,1,2}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+    <span class="n">_check_ternary</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    
+    <span class="n">ei</span> <span class="o">=</span> <span class="n">Ei</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_eipal</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">is_eipal</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">j</span><span class="p">:],</span> <span class="n">i</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">j</span><span class="o">+</span><span class="mi">1</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{0}</span><span class="s2"> longest ei-palindromic suffix : </span><span class="si">{1}</span><span class="s2">&quot;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span><span class="n">seq</span><span class="p">[</span><span class="n">j</span><span class="p">:]))</span>
+    <span class="n">closure</span> <span class="o">=</span> <span class="n">seq</span>
+    <span class="n">pref</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">pref</span><span class="p">:</span>
+        <span class="n">closure</span> <span class="o">=</span> <span class="n">closure</span> <span class="o">+</span> <span class="n">ei</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">letter</span><span class="p">)]</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">closure</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="make_word012"><a class="viewcode-back" href="../tgpc.html#tgpc.make_word012">[docs]</a><span class="k">def</span> <span class="nf">make_word012</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">seed</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Makes a ternary GPS word from (delta, theta).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        delta (str): The sequence delta of the directive bi-sequence,</span>
+<span class="sd">            composed of the letters &#39;0&#39;, &#39;1&#39; and &#39;2&#39;.</span>
+<span class="sd">        theta (str): The sequence theta of the directive bi-sequence,</span>
+<span class="sd">            composed from the letters &#39;R&#39;, &#39;0&#39;, &#39;1&#39; and &#39;2&#39;, where </span>
+<span class="sd">            the last three stand for E_0, E_1 and E_2. Must have the </span>
+<span class="sd">            same length as delta.</span>
+<span class="sd">        seed (str): seed (initial w_0), optional.</span>
+
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A string made by pseudopalidnromic closure from (delta, theta).</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; make_word012(&quot;0011&quot;, &quot;012R&quot;)</span>
+<span class="sd">        &#39;00221112200&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Checking correct input</span>
+    <span class="n">_check_dt</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+    
+    <span class="c1"># Making w by pseudopalindromic closure</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">seed</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)):</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">w</span> <span class="o">+</span> <span class="n">delta</span><span class="p">[</span><span class="n">step</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;R&quot;</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">make_pal_closure</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">theta</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">]:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">make_eipal_closure</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">theta</span><span class="p">[</span><span class="n">step</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;wrong symbol&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;w</span><span class="si">{0}</span><span class="s2"> = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">step</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">w</span><span class="p">))</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">w</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="set_logging"><a class="viewcode-back" href="../tgpc.html#tgpc.set_logging">[docs]</a><span class="k">def</span> <span class="nf">set_logging</span><span class="p">(</span><span class="n">logging_level</span> <span class="o">=</span> <span class="s2">&quot;ERROR&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sets the logging level of the module.</span>
+<span class="sd">    </span>
+<span class="sd">    If the level is set to &quot;ERROR&quot;, the functions log only errors.</span>
+<span class="sd">    If it is set to &quot;INFO&quot; or &quot;DEBUG&quot;, the fuction prints more </span>
+<span class="sd">    information about how ternary words are being processed.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        level(str): &quot;ERROR&quot; (default), &quot;INFO&quot; or &quot;DEBUG&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging_level</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">_check_ternary</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises an error if seq is not in A = {&quot;0&quot;,&quot;1&quot;, &quot;2&quot;}&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">x</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="s2">&quot;012&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">seq</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is not in A = {{0,1,2}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seq</span><span class="p">))</span>
+    
+<span class="k">def</span> <span class="nf">_check_theta</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises an error if seq is not in A = {&quot;0&quot;,&quot;1&quot;, &quot;2&quot;, &quot;R&quot;}&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">x</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="s2">&quot;012R&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">seq</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is not in A = {{0,1,2,R}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seq</span><span class="p">))</span>
+        
+<span class="k">def</span> <span class="nf">_check_dt</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check if the input delta and theta are correct&quot;&quot;&quot;</span>
+    <span class="n">_check_ternary</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
+    <span class="n">_check_theta</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">theta</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The length of delta and theta are not the same&quot;</span><span class="p">)</span>
+        
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">doctest</span>
+    <span class="n">doctest</span><span class="o">.</span><span class="n">testmod</span><span class="p">()</span>
+
+</pre></div>
+
+
+    
+
+    
+  </body>
+</html>

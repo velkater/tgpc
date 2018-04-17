@@ -3,6 +3,11 @@
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">         
 <div class="section" id="module-tgpc">
 <span id="tgpc-module"></span><h1>tgpc module<a class="headerlink" href="#module-tgpc" title="Permalink to this headline"></a></h1>
+Python module for the normalization of ternary generalized pseudostandard words.    
+Examples can be found in the Jupyter notebook `Examples.ipynb` 
+  
+</br>
+<h3> API:</h3>
 <dl class="function">
 <dt id="tgpc.Ei">
 <code class="descclassname">tgpc.</code><code class="descname">Ei</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="headerlink" href="#tgpc.Ei" title="Permalink to this definition"></a></dt>

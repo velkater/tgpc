@@ -1,10 +1,9 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">         
+<!DOCTYPE html>         
 <div class="section" id="module-tgpc">
 <span id="tgpc-module"></span><h1>tgpc module<a class="headerlink" href="#module-tgpc" title="Permalink to this headline"></a></h1>
-Python module for the normalization of ternary generalized pseudostandard words.    
-Examples can be found in the Jupyter notebook `Examples.ipynb` 
+<p>Python module for the normalization of ternary generalized pseudostandard words.    
+  Examples can be found in the Jupyter notebook <code>Examples.ipynb</code></p>
   
 </br>
 <h3> API:</h3>

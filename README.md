@@ -4,33 +4,50 @@ pseudostandard words. Examples can be found in the Jupyter notebook
 
 ### API:
 
-`tgpc.Ei(i)`
-  The involutory antimorphism Ei.
+### *class* `tgpc.Normalizer012`
+
+Bases: `object`
+
+Object for normalizing a ternary directive bi-sequences using the new
+normalization algorithm.
+
+`normalize(delta, theta)`
+
+Ternary normalization algorithm.
+
+Normalization function that returns the normalized directive bi-sequence
+giving the same generalized pseudostandard word as (delta, theta).
 
 <table>
 <tbody>
 <tr class="odd">
 <td>Parameters:</td>
-<td><strong>i</strong> – Either 0, 1, 2 or “0”, “1”, “2”</td>
+<td><ul>
+<li><strong>delta</strong> (<em>str</em>) – The sequence delta of the directive bi-sequence. It should be composed of the letters ‘0’, ‘1’ and ‘2’.</li>
+<li><strong>theta</strong> (<em>str</em>) – The sequence theta of the directive bi-sequence. It should be composed from the letters ‘R’, ‘0’, ‘1’ and ‘2’, where the last three stand for E_0, E_1 and E_2.</li>
+</ul></td>
 </tr>
 <tr class="even">
 <td>Returns:</td>
-<td>A tuple corresponding to the involutory antimorphism Ei.</td>
+<td><p>Returns the tuple (new_delta, new_theta, notchanged) where (new_delta, new_theta) is the normalized bi-sequence of (delta, theta). The boolean notchanged is True if the bi-sequence (delta, theta) was already normalized, otherwise it is False.</p></td>
 </tr>
 </tbody>
 </table>
 
 Examples
 
-    >>> Ei(0)
-    ('0', '2', '1')
-    >>> Ei(1)
-    ('2', '1', '0')
-    >>> Ei(2)
-    ('1', '0', '2')
+    >>> n = Normalizer012()
+    >>> n.normalize("0011", "00RR")
+    ('0011', '00RR', True)
 
-*class*
-`tgpc.NaiveNormalizer012`
+    >>> n.normalize("0102110", "02R0121")
+    
+ `print_all_factor_rules()`
+Prints in a readable form all the factor normalization rules
+
+-----------------------------------
+
+### *class* `tgpc.NaiveNormalizer012`
 
 Bases: `object`
 
@@ -72,49 +89,33 @@ Examples
     >>> nn.normalize("0102110", "02R0121")
     ('01021102', '02R01201', False)
     
- 
-*class*
-`tgpc.Normalizer012`
 
-Bases: `object`
-
-Object for normalizing a ternary directive bi-sequences using the new
-normalization algorithm.
-
-`normalize(delta, theta)`
-
-Ternary normalization algorithm.
-
-Normalization function that returns the normalized directive bi-sequence
-giving the same generalized pseudostandard word as (delta, theta).
+-------------------------------------------------------------------
+`tgpc.Ei(i)`
+  The involutory antimorphism Ei.
 
 <table>
 <tbody>
 <tr class="odd">
 <td>Parameters:</td>
-<td><ul>
-<li><strong>delta</strong> (<em>str</em>) – The sequence delta of the directive bi-sequence. It should be composed of the letters ‘0’, ‘1’ and ‘2’.</li>
-<li><strong>theta</strong> (<em>str</em>) – The sequence theta of the directive bi-sequence. It should be composed from the letters ‘R’, ‘0’, ‘1’ and ‘2’, where the last three stand for E_0, E_1 and E_2.</li>
-</ul></td>
+<td><strong>i</strong> – Either 0, 1, 2 or “0”, “1”, “2”</td>
 </tr>
 <tr class="even">
 <td>Returns:</td>
-<td><p>Returns the tuple (new_delta, new_theta, notchanged) where (new_delta, new_theta) is the normalized bi-sequence of (delta, theta). The boolean notchanged is True if the bi-sequence (delta, theta) was already normalized, otherwise it is False.</p></td>
+<td>A tuple corresponding to the involutory antimorphism Ei.</td>
 </tr>
 </tbody>
 </table>
 
 Examples
 
-    >>> n = Normalizer012()
-    >>> n.normalize("0011", "00RR")
-    ('0011', '00RR', True)
-
-    >>> n.normalize("0102110", "02R0121")
+    >>> Ei(0)
+    ('0', '2', '1')
+    >>> Ei(1)
+    ('2', '1', '0')
+    >>> Ei(2)
+    ('1', '0', '2')
     
- `print_all_factor_rules()`
-Prints in a readable form all the factor normalization rules
-
 `tgpc.is_eipal(seq, i)`
 Checks if a word is an Ei-palindrome.
 

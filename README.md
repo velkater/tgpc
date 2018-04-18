@@ -4,7 +4,7 @@ pseudostandard words. Examples can be found in the Jupyter notebook
 
 ### API:
 
-`tgpc.Ei`<span class="sig-paren">(</span>*i*<span class="sig-paren">)</span><a href="#tgpc.Ei" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.Ei(i)`
   The involutory antimorphism Ei.
 
 <table>
@@ -30,15 +30,14 @@ Examples
     ('1', '0', '2')
 
 *class*
-`tgpc.NaiveNormalizer012`<a href="#tgpc.NaiveNormalizer012" class="headerlink" title="Permalink to this definition"></a>
+`tgpc.NaiveNormalizer012`
 
 Bases: `object`
 
 Object for normalizing ternary directive bi-sequences using a naive
 algorithm.
 
-`normalize`<span class="sig-paren">(</span>*delta*, *theta*<span
-class="sig-paren">)</span><a href="#tgpc.NaiveNormalizer012.normalize" class="headerlink" title="Permalink to this definition"></a>
+`normalize(delta, theta)`
 
 Ternary naive normalization algorithm.
 
@@ -73,16 +72,16 @@ Examples
     >>> nn.normalize("0102110", "02R0121")
     ('01021102', '02R01201', False)
     
+ 
 *class*
-`tgpc.``Normalizer012`<a href="#tgpc.Normalizer012" class="headerlink" title="Permalink to this definition"></a>
+`tgpc.Normalizer012`
 
 Bases: `object`
 
 Object for normalizing a ternary directive bi-sequences using the new
 normalization algorithm.
 
-`normalize`<span class="sig-paren">(</span>*delta*, *theta*<span
-class="sig-paren">)</span><a href="#tgpc.Normalizer012.normalize" class="headerlink" title="Permalink to this definition"></a>
+`normalize(delta, theta)`
 
 Ternary normalization algorithm.
 
@@ -113,10 +112,10 @@ Examples
 
     >>> n.normalize("0102110", "02R0121")
     
- `print_all_factor_rules`<span class="sig-paren">(</span><span class="sig-paren">)</span><a href="#tgpc.Normalizer012.print_all_factor_rules" class="headerlink" title="Permalink to this definition"></a>  
+ `print_all_factor_rules()`
 Prints in a readable form all the factor normalization rules
 
- `tgpc.``is_eipal`<span class="sig-paren">(</span>*seq*, *i*<span class="sig-paren">)</span><a href="#tgpc.is_eipal" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.is_eipal(seq, i)`
 Checks if a word is an Ei-palindrome.
 
 <table>
@@ -142,7 +141,7 @@ Examples
     >>> is_eipal("002", 1)
     False
     
- `tgpc.``is_pal`<span class="sig-paren">(</span>*seq*<span class="sig-paren">)</span><a href="#tgpc.is_pal" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.is_pal(seq)`
 Checks if a word is an R-palindrome.
 
 <table>
@@ -165,7 +164,7 @@ Examples
     >>> is_pal("010")
     True
     
- `tgpc.``make_eipal_closure`<span class="sig-paren">(</span>*seq*, *i*<span class="sig-paren">)</span><a href="#tgpc.make_eipal_closure" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.make_eipal_closure(seq, i)`
 Makes an Ei-palindromic closure of a string.
 
 <table>
@@ -191,7 +190,7 @@ Examples
     >>> make_eipal_closure("101", 1)
     '10121'
 
- `tgpc.``make_pal_closure`<span class="sig-paren">(</span>*seq*<span class="sig-paren">)</span><a href="#tgpc.make_pal_closure" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.make_pal_closure(seq)`
 Makes a palindromic closure of a string.
 
 <table>
@@ -214,7 +213,7 @@ Examples
     >>> make_pal_closure("102")
     '10201'
     
- `tgpc.``make_word012`<span class="sig-paren">(</span>*delta*, *theta*, *seed=''*<span class="sig-paren">)</span><a href="#tgpc.make_word012" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.make_word012(delta, theta,*seed='')`
 Makes a ternary GPS word from (delta, theta).
 
 <table>
@@ -239,9 +238,7 @@ Examples
     >>> make_word012("0011", "012R")
     '00221112200'
 
-<!-- -->
-
- `tgpc.``set_logging`<span class="sig-paren">(</span>*logging\_level='ERROR'*<span class="sig-paren">)</span><a href="#tgpc.set_logging" class="headerlink" title="Permalink to this definition"></a>  
+`tgpc.set_logging(logging level='ERROR')`
 Sets the logging level of the module.
 
 If the level is set to “ERROR”, the functions log only errors. If it is

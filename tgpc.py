@@ -252,7 +252,7 @@ class _Normalization012_rules_checker:
             for rule in _rules:
                 match = re.match(rule, biseq)
                 if match:
-                    logging.info("rule" + str(rules_index) + ": " +                     str(self._print_factor_rule(rule)) +
+                    logging.info("rule" + str(rules_index) + ": " + str(self._print_factor_rule(rule)) +
                     " in biseq " + str((biseq[0::2], biseq[1::2])))
                     
                     position = match.end() - 2 # The position to be corrected

@@ -65,7 +65,7 @@ class Normalizer012:
 
         # Post-processing
         new_delta, new_theta = (biseq[0::2], biseq[1::2])
-        logging.info("bi-sequence before changing the letters back: (" +                         new_delta + ", " + new_theta + ")")
+        logging.info("bi-sequence before changing the letters back: (" + new_delta + ", " + new_theta + ")")
 
         new_delta, new_theta = self._change_letters_order_back(new_delta, 
                                                                new_theta, substitution)
